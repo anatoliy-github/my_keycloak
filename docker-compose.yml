@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  postgres:
+    container_name: postgres
+    image: library/postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: keycloak_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - $PWD/postgres/pgdata:/var/lib/postgresql/data
+      - $PWD/postgres/init_data:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    environment:
+      DB_VENDOR: POSTGRES
+      DB_ADDR: postgres
+      DB_DATABASE: keycloak_db
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      KC_BOOTSTRAP_ADMIN_USERNAME: temp-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+      KC_HTTPS_PORT: 8443
+      KC_HOSTNAME: https://auth-kc.url
+      KC_HTTP_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/fullchain.pem
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/privkey.pem
+    volumes:
+      - $PWD/certs/fullchain.pem:/opt/keycloak/conf/fullchain.pem
+      - $PWD/certs/privkey.pem:/opt/keycloak/conf/privkey.pem
+    command:
+      - start
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    depends_on:
+      - postgres
+    links:
+      - "postgres:postgres"
